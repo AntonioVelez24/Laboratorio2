@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using System;
 
 public class GameController : MonoBehaviour
 {
@@ -12,12 +13,28 @@ public class GameController : MonoBehaviour
     private bool isPaused = false;
     public Text timeText;
     public Text healthText;
+    public Text scoreText; 
     public float passedTime;
     private PlayerControl playerControl;
+
+    public static event Action OnGameLost; 
+    public static event Action OnGameWon;
     void Awake()
     {
         _compSpriteRenderer = player.GetComponent<SpriteRenderer>();
         playerControl = player.GetComponent<PlayerControl>();
+    }
+    void OnEnable()
+    {
+        PlayerControl.OnPlayerDamaged += UpdateHealth;
+        PlayerControl.OnPlayerScore += UpdateScore;
+        GameController.OnGameLost += GameOver;
+        GameController.OnGameWon += GameWon;
+    }
+    void OnDisable()
+    {
+        PlayerControl.OnPlayerDamaged -= UpdateHealth;
+        PlayerControl.OnPlayerScore -= UpdateScore;
     }
     public void ColorRed()
     {
@@ -50,7 +67,18 @@ public class GameController : MonoBehaviour
             pausePanel.SetActive(false);
         }  
     }
-    // Update is called once per frame
+    private void UpdateScore(int newScore)
+    {
+        scoreText.text = "Puntaje: " + newScore;
+    }
+    private void UpdateHealth(int currentHealth)
+    {
+        healthText.text = "Salud: " + currentHealth;
+        if (currentHealth <= 0)
+        {
+            OnGameLost?.Invoke();
+        }
+    }
     void Update()
     {
         if (!isPaused)
@@ -58,17 +86,20 @@ public class GameController : MonoBehaviour
             passedTime += Time.deltaTime;
             int seconds = Mathf.FloorToInt(passedTime);
             timeText.text = "Tiempo: " + seconds;
-            if (passedTime >= 30)
+            if (passedTime >= 28)
             {
-                PlayerPrefs.SetString("GameResult", "GANASTE");
-                SceneManager.LoadScene("EndScreen");
+                OnGameWon?.Invoke();
             }
         }
-        healthText.text = "Salud: " + playerControl.health;
-        if (playerControl.health <= 0)
-        {
-            PlayerPrefs.SetString("GameResult", "Game Over");
-            SceneManager.LoadScene("EndScreen"); 
-        }        
+    }
+    private void GameWon()
+    {
+        PlayerPrefs.SetString("GameResult", "Ganaste");
+        SceneManager.LoadScene("EndScreen");
+    }
+    private void GameOver()
+    {
+        PlayerPrefs.SetString("GameResult", "Game Over");
+        SceneManager.LoadScene("EndScreen");
     }
 }
